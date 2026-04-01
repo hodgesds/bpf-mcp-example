@@ -243,7 +243,7 @@ live kernel scheduling behavior.
 Some ideas for building on this:
 
 - **Add more tracepoints** — `sched_wakeup` for wakeup latency, `softirq_entry/exit` for interrupt analysis
-- **Per-CPU ring buffers** — use `BPF_MAP_TYPE_HASH_OF_MAPS` for scalability (see scxtop slides)
+- **shared ring buffers** — use `BPF_MAP_TYPE_HASH_OF_MAPS` for scalability
 - **Sampling** — add a configurable sample rate to reduce overhead on busy systems
 - **More MCP tools** — latency histograms, waker-wakee analysis, anomaly detection
 - **MCP resources** — expose live stats as MCP resources for passive reads
