@@ -28,7 +28,7 @@ from [scxtop](https://github.com/sched-ext/scx/tree/main/tools/scxtop).
                                     │                 │                │
                                     │    ┌────────────▼────────────┐   │
                                     │    │ Ring Buffer Consumer    │   │
-                                    │    │ poll() every 10ms       │   │
+                                    │    │ epoll (blocking)        │   │
                                     ├────┴─────────────────────────┴───┤
                                     │  Kernel                          │
                                     │    ┌─────────────────────────┐   │
@@ -129,9 +129,11 @@ echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"disable_co
 → {"jsonrpc":"2.0","id":2,"method":"tools/list"}
 
 ← {"jsonrpc":"2.0","id":2,"result":{"tools":[
-    {"name":"get_scheduling_stats","description":"Get overall scheduling statistics...","inputSchema":{"type":"object","properties":{}}},
+    {"name":"get_scheduling_stats","description":"Get overall scheduling statistics...","inputSchema":{...}},
     {"name":"get_top_processes","description":"Get top processes by context switch activity...","inputSchema":{...}},
-    {"name":"reset_stats","description":"Reset all collected scheduling statistics...","inputSchema":{"type":"object","properties":{}}}
+    {"name":"reset_stats","description":"Reset all collected scheduling statistics...","inputSchema":{...}},
+    {"name":"enable_collection","description":"Enable BPF event collection...","inputSchema":{...}},
+    {"name":"disable_collection","description":"Disable BPF event collection...","inputSchema":{...}}
   ]}}
 ```
 
@@ -148,7 +150,7 @@ echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"disable_co
 ```json
 → {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_scheduling_stats","arguments":{}}}
 
-← {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"total_events\": 84523,\n  \"collection_duration_secs\": 2.01,\n  \"events_per_sec\": 42050.7,\n  \"num_cpus_observed\": 16,\n  \"per_cpu\": [\n    {\"cpu\": 0, \"switches\": 5204},\n    {\"cpu\": 1, \"switches\": 5891},\n    ...\n  ],\n  \"unique_processes\": 127\n}"}]}}
+← {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"total_events\": 84523,\n  \"collection_duration_secs\": 2.01,\n  \"events_per_sec\": 42050.7,\n  \"num_cpus_observed\": 16,\n  \"per_cpu\": [\n    {\"cpu\": 0, \"switches\": 5204},\n    {\"cpu\": 1, \"switches\": 5891},\n    ...\n  ],\n  \"unique_processes\": 127,\n  \"collection_enabled\": true\n}"}]}}
 ```
 
 **6. Get top processes** by total context switches:
@@ -233,7 +235,7 @@ live kernel scheduling behavior.
 - **`tp_btf/sched_switch`** — stable tracepoint, available on all modern kernels, BTF-typed arguments for CO-RE portability
 - **Single ring buffer** — sufficient for an example; production tools (like scxtop) use hash-of-maps for multi-ring-buffer scalability
 - **`try_lock()` in BPF callback** — avoids blocking the ring buffer consumer if the MCP handler holds the lock
-- **stdin reader in background thread** — keeps the main thread free to poll the ring buffer; no async runtime needed
+- **Ring buffer consumer in background thread** — uses epoll to block until events arrive; main thread handles blocking stdin reads for MCP; no async runtime needed
 - **Collection disabled by default** — the BPF program is loaded but not attached at startup; `enable_collection` attaches to the tracepoint and `disable_collection` detaches, so there is truly zero overhead when not collecting
 
 ## Extending this example
